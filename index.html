@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PharmWS">
+<meta name="theme-color" content="#2C5F8A">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>薬剤師ワークスペース</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#f5f4f0;--surface:#ffffff;--border:rgba(0,0,0,0.1);
+  --text:#1a1a18;--text2:#666;--text3:#aaa;
+  --blue:#2C5F8A;--blue-light:#E8F0F8;--blue-mid:#4A86BE;
+  --green:#1D8A6B;--green-light:#E3F5EF;
+  --red:#C0392B;--red-light:#FCEBEB;
+  --orange:#C07A2B;--orange-light:#FDF0DC;
+  --purple:#5B4A9C;--purple-light:#EEEDFE;
+  --shadow:0 2px 12px rgba(0,0,0,0.08);
+  --radius:12px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sans-serif;background:var(--bg);color:var(--text);}
+
+/* ===== LAYOUT ===== */
+.app{display:flex;flex-direction:column;height:100dvh;height:100vh;}
+.header{background:var(--blue);color:#fff;padding:env(safe-area-inset-top,0) 16px 10px;padding-top:calc(env(safe-area-inset-top,0) + 10px);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.header-title{font-size:16px;font-weight:600;letter-spacing:0.02em;}
+.header-sync{font-size:11px;opacity:0.75;display:flex;align-items:center;gap:4px;}
+.tab-bar{display:flex;background:var(--surface);border-top:0.5px solid var(--border);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);}
+.tab-btn{flex:1;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:10px;font-weight:500;}
+.tab-btn.active{color:var(--blue);}
+.tab-btn i{font-size:22px;}
+.content{flex:1;overflow:hidden;position:relative;}
+.screen{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;display:none;}
+.screen.active{display:block;}
+
+/* ===== CARDS ===== */
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:12px;}
+.card-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.card-title i{font-size:16px;}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;margin-left:auto;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* ===== CALENDAR ===== */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-nav-title{font-size:16px;font-weight:600;color:var(--text);}
+.cal-nav button{background:none;border:none;cursor:pointer;color:var(--text2);font-size:22px;padding:4px 8px;border-radius:8px;}
+.cal-nav button:active{background:var(--bg);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-dow{font-size:10px;color:var(--text3);text-align:center;padding:4px 0;font-weight:600;}
+.cal-day{display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px 1px;border-radius:8px;cursor:pointer;}
+.cal-day:active{background:var(--bg);}
+.cal-day.today .day-num{background:var(--blue);color:#fff;border-radius:50%;}
+.cal-day.other-month{opacity:0.3;}
+.day-num{width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;}
+.shift-chip{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;line-height:1.4;}
+.chip-day{background:var(--green-light);color:var(--green);}
+.chip-off{background:var(--bg);color:var(--text3);border:0.5px solid var(--border);}
+.chip-work{background:var(--orange-light);color:var(--orange);}
+.chip-night{background:var(--purple-light);color:var(--purple);}
+.ev-pip{width:4px;height:4px;background:var(--blue);border-radius:50%;}
+
+/* ===== SCHEDULE ===== */
+.date-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.date-title{font-size:18px;font-weight:700;}
+.btn-add{background:var(--blue);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;}
+.btn-add:active{opacity:0.85;}
+.tl-item{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+.tl-time{font-size:11px;color:var(--text2);width:36px;text-align:right;flex-shrink:0;padding-top:4px;line-height:1.4;}
+.tl-bar{width:3px;border-radius:2px;flex-shrink:0;min-height:32px;align-self:stretch;}
+.bar-day{background:var(--green);}
+.bar-off{background:var(--text3);}
+.bar-work{background:var(--orange);}
+.bar-gcal{background:var(--blue);}
+.tl-body{flex:1;}
+.tl-title{font-size:14px;font-weight:500;color:var(--text);line-height:1.3;}
+.tl-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.no-ev{text-align:center;padding:28px 0;color:var(--text3);font-size:14px;}
+
+/* ===== FORM ===== */
+.form-sheet{background:var(--surface);border-radius:var(--radius);padding:14px;margin-bottom:12px;border:1px solid var(--blue-light);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.form-group{margin-bottom:8px;}
+.form-label{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px;display:block;}
+.form-input,.form-select{width:100%;font-size:14px;padding:9px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);-webkit-appearance:none;}
+.form-input:focus,.form-select:focus{outline:none;border-color:var(--blue);}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+.btn-save{background:var(--blue);color:#fff;border:none;border-radius:20px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-cancel{background:none;border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:13px;color:var(--text2);cursor:pointer;}
+
+/* ===== TASKS ===== */
+.seg-ctrl{display:flex;background:var(--bg);border-radius:10px;padding:3px;margin-bottom:12px;}
+.seg-btn{flex:1;padding:6px;font-size:13px;font-weight:500;border:none;border-radius:8px;background:none;color:var(--text2);cursor:pointer;}
+.seg-btn.active{background:var(--surface);color:var(--blue);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);border-left:4px solid #ccc;background:var(--surface);margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,0.05);}
+.task-item.done{opacity:0.5;}
+.task-item.done .task-name{text-decoration:line-through;}
+.task-cb{width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:var(--blue);}
+.task-body{flex:1;min-width:0;}
+.task-name{font-size:14px;color:var(--text);line-height:1.3;}
+.task-meta{display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap;}
+.tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;}
+.tag-red{background:var(--red-light);color:var(--red);}
+.tag-orange{background:var(--orange-light);color:var(--orange);}
+.tag-blue{background:var(--blue-light);color:var(--blue);}
+.tag-gray{background:var(--bg);color:var(--text3);}
+.tag-imp-high{background:var(--red-light);color:var(--red);}
+.tag-imp-mid{background:var(--orange-light);color:var(--orange);}
+.tag-imp-low{background:var(--green-light);color:var(--green);}
+.task-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;flex-shrink:0;padding:0 2px;}
+.empty{text-align:center;padding:32px 0;color:var(--text3);font-size:14px;line-height:2;}
+
+/* ===== MR ===== */
+.mr-card{background:var(--surface);border-radius:var(--radius-sm);box-shadow:0 1px 4px rgba(0,0,0,0.06);padding:12px;margin-bottom:8px;border-left:4px solid var(--blue);}
+.mr-name{font-size:15px;font-weight:600;color:var(--text);}
+.mr-meta{font-size:12px;color:var(--text2);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;}
+.mr-card-top{display:flex;align-items:center;justify-content:space-between;}
+.mr-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;}
+.gcal-badge{font-size:11px;background:var(--blue-light);color:var(--blue);padding:4px 10px;border-radius:6px;margin-bottom:10px;display:flex;align-items:center;gap:5px;font-weight:500;}
+
+/* ===== MODAL ===== */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+.modal-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;padding-bottom:calc(env(safe-area-inset-bottom,0) + 20px);}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:22px;}
+.shift-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border);}
+.shift-row:last-child{border-bottom:none;}
+.shift-person{font-size:14px;font-weight:600;width:56px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-title"><i class="ti ti-pill" style="margin-right:6px;"></i>PharmWS</div>
+    <div class="header-sync"><i class="ti ti-brand-google"></i>Google連携済み</div>
+  </div>
+
+  <div class="content">
+    <!-- SCREEN 1: カレンダー -->
+    <div class="screen active" id="screen-cal">
+      <div class="card">
+        <div class="cal-nav">
+          <button id="cal-prev">‹</button>
+          <span class="cal-nav-title" id="cal-title"></span>
+          <button id="cal-next">›</button>
+        </div>
+        <div class="cal-grid" id="cal-dow"></div>
+        <div class="cal-grid" id="cal-grid" style="margin-top:4px;"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;font-size:11px;color:var(--text2);">
+          <span><span class="shift-chip chip-day">日勤</span></span>
+          <span><span class="shift-chip chip-work">仕事</span></span>
+          <span><span class="shift-chip chip-off">休み</span></span>
+          <span style="display:flex;align-items:center;gap:3px;"><span class="ev-pip"></span>その他予定</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: 当日の予定 -->
+    <div class="screen" id="screen-sched">
+      <div class="card">
+        <div class="date-hdr">
+          <div class="date-title" id="sched-date"></div>
+          <button class="btn-add" onclick="toggleEvForm()"><i class="ti ti-plus"></i>追加</button>
+        </div>
+        <div id="ev-form" style="display:none;">
+          <div class="form-sheet">
+            <div class="form-group"><label class="form-label">タイトル</label><input type="text" class="form-input" id="ev-title" placeholder="例：病棟回診（内科）"></div>
+            <div class="form-row">
+              <div><label class="form-label">開始</label><input type="time" class="form-input" id="ev-start" value="09:00"></div>
+              <div><label class="form-label">終了</label><input type="time" class="form-input" id="ev-end" value="10:00"></div>
+            </div>
+            <div class="form-group"><label class="form-label">場所・メモ</label><input type="text" class="form-input" id="ev-note" placeholder="例：4階東病棟"></div>
+            <div class="form-actions">
+              <button class="btn-cancel" onclick="toggleEvForm()">キャンセル</button>
+              <button class="btn-save" onclick="saveEvent()">保存</button>
+            </div>
+          </div>
+        </div>
+        <div id="timeline"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: タスク -->
+    <div class="screen" id="screen-task">
+      <div class="card">
+        <div class="seg-ctrl">
+          <button class="seg-btn active" data-tab="today" onclick="switchTaskTab(this)">今日</button>
+          <button class="seg-btn" data-tab="week" onclick="switchTaskTab(this)">今週</button>
+          <button class="seg-btn" data-tab="month" onclick="switchTaskTab(this)">今月</button>
+        </div>
+        <button class="btn-add" style="margin-bottom:12px;" onclick="toggleTaskForm()"><i class="ti ti-plus"></i>タスク追加</button>
+        <div id="task-form" style="display:none;">
+          <div class="form-sheet">
+            <div class="form-group"><label class="form-label">タスク名</label><input type="text" class="form-input" id="task-title" placeholder="例：持参薬確認"></div>
+            <div class="form-row">
+              <div><label class="form-label">期限</label><input type="date" class="form-input" id="task-due"></div>
+              <div><label class="form-label">重要度</label>
+                <select class="form-select" id="task-imp"><option value="high">高</option><option value="mid" selected>中</option><option value="low">低</option></select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-cancel" onclick="toggleTaskForm()">キャンセル</button>
+              <button class="btn-save" onclick="saveTask()">保存</button>
+            </div>
+          </div>
+        </div>
+        <div id="task-list"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: MR -->
+    <div class="screen" id="screen-mr">
+      <div class="card">
+        <div class="gcal-badge"><i class="ti ti-brand-google"></i>アポ保存時にGoogleカレンダーへ追加</div>
+        <button class="btn-add" style="margin-bottom:12px;" onclick="toggleMrForm()"><i class="ti ti-plus"></i>アポ追加</button>
+        <div id="mr-form" style="display:none;">
+          <div class="form-sheet">
+            <div class="form-row">
+              <div><label class="form-label">MR名・会社</label><input type="text" class="form-input" id="mr-name" placeholder="田中 / エーザイ"></div>
+              <div><label class="form-label">日時</label><input type="datetime-local" class="form-input" id="mr-date"></div>
+            </div>
+            <div class="form-group"><label class="form-label">製品・目的</label><input type="text" class="form-input" id="mr-product" placeholder="レケンビ 情報提供"></div>
+            <div class="form-actions">
+              <button class="btn-cancel" onclick="toggleMrForm()">キャンセル</button>
+              <button class="btn-save" onclick="saveMr()">Googleカレンダーに追加</button>
+            </div>
+          </div>
+        </div>
+        <div id="mr-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-screen="cal" onclick="switchScreen(this)"><i class="ti ti-calendar"></i>カレンダー</button>
+    <button class="tab-btn" data-screen="sched" onclick="switchScreen(this)"><i class="ti ti-list"></i>予定</button>
+    <button class="tab-btn" data-screen="task" onclick="switchScreen(this)"><i class="ti ti-check"></i>タスク</button>
+    <button class="tab-btn" data-screen="mr" onclick="switchScreen(this)"><i class="ti ti-users"></i>MRアポ</button>
+  </div>
+</div>
+
+<!-- 日程調整モーダル -->
+<div class="modal-bg" id="adjust-modal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><span id="modal-title-text"></span><button class="modal-close" onclick="document.getElementById('adjust-modal').style.display='none'"><i class="ti ti-x"></i></button></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const DOWS=['日','月','火','水','木','金','土'];
+const fmt=(y,m,d)=>y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+let calYear,calMonth,selectedDate;
+const today=new Date(),yr=today.getFullYear(),mo=today.getMonth();
+
+// ===== Googleカレンダー実データ（ナスカレ完全同期済み） =====
+const gcalData={
+  '2026-06-01':[{title:'日勤',time:'08:30',end:'17:30',type:'day'},{title:'明治面談',time:'17:15',end:'18:15',type:'gcal'}],
+  '2026-06-02':[{title:'日勤',time:'08:30',end:'17:30',type:'day'},{title:'こうけっせんの話し合い',time:'15:00',end:'16:00',type:'gcal'},{title:'組合',time:'17:00',end:'18:00',type:'gcal'}],
+  '2026-06-03':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-04':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-05':[{title:'休み',time:'',end:'',type:'off'}],
+  '2026-06-06':[{title:'休み',time:'',end:'',type:'off'}],
+  '2026-06-07':[{title:'休み',time:'',end:'',type:'off'}],
+  '2026-06-08':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-09':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-10':[{title:'休み',time:'',end:'',type:'off'}],
+  '2026-06-11':[{title:'日勤',time:'08:30',end:'17:30',type:'day'},{title:'健康診断',time:'10:00',end:'11:00',type:'gcal'}],
+  '2026-06-12':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-13':[{title:'休み',time:'',end:'',type:'off'},{title:'ガス漏れ警報器交換',time:'13:00',end:'16:00',type:'gcal'}],
+  '2026-06-14':[{title:'休み',time:'',end:'',type:'off'}],
+  '2026-06-15':[{title:'日勤',time:'08:30',end:'17:30',type:'day'},{title:'強羅温泉 ホテルマロウド箱根',time:'',end:'',type:'gcal'}],
+  '2026-06-16':[{title:'休み',time:'',end:'',type:'off'},{title:'レンジフード掃除',time:'09:00',end:'10:00',type:'gcal'}],
+  '2026-06-17':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-18':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-19':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-20':[{title:'仕事',time:'',end:'',type:'work'},{title:'廃棄金額確認',time:'08:00',end:'09:00',type:'gcal'}],
+  '2026-06-21':[{title:'休み',time:'',end:'',type:'off'},{title:'マイナビ説明会',time:'13:00',end:'15:00',type:'gcal'}],
+  '2026-06-22':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-23':[{title:'休み',time:'',end:'',type:'off'},{title:'パス大会',time:'17:15',end:'18:15',type:'gcal'}],
+  '2026-06-24':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-25':[{title:'日勤',time:'08:30',end:'17:30',type:'day'},{title:'キャリア開発支援',time:'13:00',end:'16:30',type:'gcal'}],
+  '2026-06-26':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-27':[{title:'休み',time:'',end:'',type:'off'}],
+  '2026-06-28':[{title:'仕事',time:'',end:'',type:'work'}],
+  '2026-06-29':[{title:'日勤',time:'08:30',end:'17:30',type:'day'}],
+  '2026-06-30':[{title:'日勤',time:'08:30',end:'17:30',type:'day'},{title:'新人進捗確認',time:'08:30',end:'09:30',type:'gcal'}],
+};
+let localEvents={};
+
+// ===== SCREEN SWITCH =====
+function switchScreen(el){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('screen-'+el.dataset.screen).classList.add('active');
+  if(el.dataset.screen==='sched'){renderSchedule(selectedDate);}
+}
+
+// ===== CALENDAR =====
+function initCal(){
+  calYear=yr;calMonth=mo;
+  selectedDate=fmt(yr,mo,today.getDate());
+  renderCal();renderSchedule(selectedDate);
+}
+function getShift(ds){return(gcalData[ds]||[]).find(e=>['day','off','work','night'].includes(e.type));}
+function renderCal(){
+  document.getElementById('cal-title').textContent=calYear+'年'+(calMonth+1)+'月';
+  document.getElementById('cal-dow').innerHTML=DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const grid=document.getElementById('cal-grid');grid.innerHTML='';
+  const first=new Date(calYear,calMonth,1).getDay();
+  const last=new Date(calYear,calMonth+1,0).getDate();
+  for(let i=0;i<first;i++){const pv=new Date(calYear,calMonth,0-first+i+1).getDate();grid.innerHTML+=`<div class="cal-day other-month"><div class="day-num">${pv}</div></div>`;}
+  for(let d=1;d<=last;d++){
+    const ds=fmt(calYear,calMonth,d);
+    const isT=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    const shift=getShift(ds);
+    const shL=shift?.title||'';
+    const shC=shift?.type==='day'?'chip-day':shift?.type==='work'?'chip-work':shift?.type==='off'?'chip-off':shift?.type==='night'?'chip-night':'';
+    const hasEv=(gcalData[ds]||[]).some(e=>!['day','off','work','night'].includes(e.type))||(localEvents[ds]||[]).length>0;
+    grid.innerHTML+=`<div class="cal-day${isT?' today':''}" onclick="onDayClick('${ds}','${calMonth+1}月${d}日')">
+      <div class="day-num">${d}</div>
+      ${shL?`<div class="shift-chip ${shC}">${shL}</div>`:'<div style="height:15px;"></div>'}
+      ${hasEv?'<div class="ev-pip"></div>':'<div style="height:4px;"></div>'}
+    </div>`;
+  }
+  const rem=42-first-last;for(let i=1;i<=rem;i++)grid.innerHTML+=`<div class="cal-day other-month"><div class="day-num">${i}</div></div>`;
+}
+function onDayClick(ds,label){
+  selectedDate=ds;
+  showAdjustModal(ds,label);
+}
+document.getElementById('cal-prev').onclick=()=>{calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCal();};
+document.getElementById('cal-next').onclick=()=>{calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCal();};
+
+// ===== ADJUST MODAL =====
+function showAdjustModal(ds,label){
+  document.getElementById('modal-title-text').textContent=label;
+  const shift=getShift(ds);
+  const others=(gcalData[ds]||[]).filter(e=>!['day','off','work','night'].includes(e.type));
+  const local=localEvents[ds]||[];
+  const shCls=shift?.type==='day'?'chip-day':shift?.type==='work'?'chip-work':shift?.type==='off'?'chip-off':'';
+  let html=`<div style="margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">シフト</div>
+    <div style="font-size:14px;padding:8px 10px;border-radius:8px;background:var(--bg);">
+      ${shift?`<span class="shift-chip ${shCls}">${shift.title}</span>${shift.time?' '+shift.time+'〜'+shift.end:''}`:'<span style="color:var(--text3);">データなし</span>'}
+    </div>
+  </div>`;
+  const allOther=[...others,...local];
+  if(allOther.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">その他の予定</div>`;
+    html+=allOther.map(e=>`<div style="font-size:14px;padding:8px 10px;border-radius:8px;background:var(--bg);margin-bottom:6px;">${e.time?'<span style="color:var(--text2);font-size:12px;margin-right:6px;">'+e.time+'</span>':''}<strong>${e.title}</strong></div>`).join('');
+  }
+  html+=`<button class="btn-add" style="width:100%;justify-content:center;margin-top:14px;" onclick="goToSched('${ds}')"><i class="ti ti-calendar-plus"></i>この日の予定を見る</button>`;
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('adjust-modal').style.display='flex';
+}
+function goToSched(ds){
+  selectedDate=ds;
+  document.getElementById('adjust-modal').style.display='none';
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelector('[data-screen="sched"]').classList.add('active');
+  document.getElementById('screen-sched').classList.add('active');
+  renderSchedule(ds);
+}
+
+// ===== SCHEDULE =====
+function renderSchedule(ds){
+  if(!ds)ds=selectedDate;
+  const d=new Date(ds+'T00:00:00');
+  document.getElementById('sched-date').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOWS[d.getDay()]+'）';
+  const all=[...(gcalData[ds]||[]),...(localEvents[ds]||[])].sort((a,b)=>{
+    if(!a.time&&!b.time)return 0;if(!a.time)return-1;if(!b.time)return 1;return a.time.localeCompare(b.time);
+  });
+  const tl=document.getElementById('timeline');
+  if(!all.length){tl.innerHTML=`<div class="no-ev"><i class="ti ti-calendar-off" style="font-size:28px;display:block;margin-bottom:8px;"></i>予定なし</div>`;return;}
+  tl.innerHTML=all.map(e=>{
+    const barCls=e.type==='day'?'bar-day':e.type==='off'?'bar-off':e.type==='work'?'bar-work':'bar-gcal';
+    return `<div class="tl-item">
+      <div class="tl-time">${e.time||'終日'}${e.end&&e.time?'<br><span style="font-size:10px;opacity:.6;">'+e.end+'</span>':''}</div>
+      <div class="tl-bar ${barCls}"></div>
+      <div class="tl-body">
+        <div class="tl-title">${e.title}</div>
+        ${e.note?`<div class="tl-sub">${e.note}</div>`:''}
+      </div>
+      ${e.src==='local'?`<button style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;" onclick="delLocalEv('${ds}','${e.id}')"><i class="ti ti-x"></i></button>`:''}
+    </div>`;
+  }).join('');
+}
+function toggleEvForm(){const f=document.getElementById('ev-form');f.style.display=f.style.display==='none'?'block':'none';}
+function saveEvent(){
+  const title=document.getElementById('ev-title').value.trim();if(!title)return;
+  const start=document.getElementById('ev-start').value;
+  const end=document.getElementById('ev-end').value;
+  const note=document.getElementById('ev-note').value.trim();
+  if(!localEvents[selectedDate])localEvents[selectedDate]=[];
+  localEvents[selectedDate].push({id:'l'+Date.now(),time:start,end,title,note,type:'gcal',src:'local'});
+  ['ev-title','ev-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ev-start').value='09:00';document.getElementById('ev-end').value='10:00';
+  toggleEvForm();renderSchedule(selectedDate);renderCal();
+}
+function delLocalEv(ds,id){localEvents[ds]=(localEvents[ds]||[]).filter(e=>e.id!==id);renderSchedule(ds);renderCal();}
+
+// ===== TASKS =====
+let curTaskTab='today';
+const dlColors={today:'var(--red)',soon:'var(--orange)',future:'var(--blue)',none:'#ccc'};
+const dlTagCls={today:'tag-red',soon:'tag-orange',future:'tag-blue',none:'tag-gray'};
+function getDLC(due){if(!due)return'none';const now=new Date();now.setHours(0,0,0,0);const diff=Math.floor((new Date(due)-now)/86400000);return diff<=0?'today':diff<=3?'soon':'future';}
+let tasks={
+  today:[{text:'持参薬確認（木田さん）',done:false,id:1,due:fmt(yr,mo,today.getDate()),imp:'high'},{text:'TDMレポート提出',done:true,id:2,due:fmt(yr,mo,today.getDate()),imp:'high'}],
+  week:[{text:'腎機能別用量表の更新',done:false,id:3,due:fmt(yr,mo,today.getDate()+3),imp:'mid'},{text:'OJT資料作成',done:false,id:4,due:fmt(yr,mo,today.getDate()+5),imp:'low'}],
+  month:[{text:'抗血栓療法マニュアル改訂',done:false,id:5,due:fmt(yr,mo,today.getDate()+14),imp:'high'},{text:'研修スケジュール確定',done:false,id:6,due:fmt(yr,mo,today.getDate()+20),imp:'mid'}]
+};
+function switchTaskTab(el){document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');curTaskTab=el.dataset.tab;renderTasks();}
+function toggleTaskForm(){const f=document.getElementById('task-form');f.style.display=f.style.display==='none'?'block':'none';}
+function saveTask(){
+  const title=document.getElementById('task-title').value.trim();if(!title)return;
+  tasks[curTaskTab].push({text:title,done:false,id:Date.now(),due:document.getElementById('task-due').value,imp:document.getElementById('task-imp').value});
+  document.getElementById('task-title').value='';document.getElementById('task-due').value='';document.getElementById('task-imp').value='mid';
+  toggleTaskForm();renderTasks();
+}
+function toggleTask(id){const t=tasks[curTaskTab].find(t=>t.id===id);if(t){t.done=!t.done;renderTasks();}}
+function deleteTask(id){tasks[curTaskTab]=tasks[curTaskTab].filter(t=>t.id!==id);renderTasks();}
+function renderTasks(){
+  const list=document.getElementById('task-list');const arr=tasks[curTaskTab];
+  if(!arr.length){list.innerHTML=`<div class="empty"><i class="ti ti-circle-check" style="font-size:32px;display:block;"></i>タスクなし</div>`;return;}
+  const impL={high:'高',mid:'中',low:'低'};const impC={high:'tag-imp-high',mid:'tag-imp-mid',low:'tag-imp-low'};
+  const dlL={today:'今日まで',soon:'3日以内',future:'期限あり',none:''};
+  list.innerHTML=arr.map(t=>{
+    const cat=t.done?'none':getDLC(t.due);
+    return `<div class="task-item${t.done?' done':''}" style="border-left-color:${dlColors[cat]};">
+      <input type="checkbox" class="task-cb" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
+      <div class="task-body">
+        <div class="task-name">${t.text}</div>
+        <div class="task-meta">
+          ${t.due?`<span style="font-size:10px;color:var(--text2);">${t.due.slice(5).replace('-','/')}</span>`:''}
+          <span class="tag ${impC[t.imp]||'tag-imp-mid'}">重要度${impL[t.imp]||'中'}</span>
+          ${!t.done&&cat!=='none'?`<span class="tag ${dlTagCls[cat]}">${dlL[cat]}</span>`:''}
+        </div>
+      </div>
+      <button class="task-del" onclick="deleteTask(${t.id})"><i class="ti ti-x"></i></button>
+    </div>`;
+  }).join('');
+}
+
+// ===== MR =====
+let mrList=[{id:1,name:'山田 / ファイザー',date:'2026-06-09T14:00',product:'プレタール 適応外処方確認'},{id:2,name:'鈴木 / 第一三共',date:'2026-06-11T10:30',product:'エドキサバン 新規採用申請'}];
+function toggleMrForm(){const f=document.getElementById('mr-form');f.style.display=f.style.display==='none'?'block':'none';}
+function saveMr(){
+  const name=document.getElementById('mr-name').value.trim();if(!name)return;
+  const date=document.getElementById('mr-date').value;const product=document.getElementById('mr-product').value.trim();
+  mrList.push({id:Date.now(),name,date,product});mrList.sort((a,b)=>a.date.localeCompare(b.date));
+  ['mr-name','mr-date','mr-product'].forEach(id=>document.getElementById(id).value='');
+  toggleMrForm();renderMr();
+  if(date){
+    const dt=new Date(date);
+    const s=dt.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+    const e=new Date(dt.getTime()+30*60000).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+    window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('MRアポ：'+name)}&dates=${s}/${e}&details=${encodeURIComponent('製品・目的：'+product)}`,'_blank');
+  }
+}
+function deleteMr(id){mrList=mrList.filter(m=>m.id!==id);renderMr();}
+function renderMr(){
+  const list=document.getElementById('mr-list');if(!mrList.length){list.innerHTML=`<div class="empty"><i class="ti ti-user-off" style="font-size:32px;display:block;"></i>アポなし</div>`;return;}
+  list.innerHTML=mrList.map(m=>{
+    const dt=m.date?new Date(m.date):null;
+    const ds=dt?`${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`:'';
+    return `<div class="mr-card"><div class="mr-card-top"><span class="mr-name"><i class="ti ti-user" style="font-size:14px;margin-right:4px;"></i>${m.name}</span><button class="mr-del" onclick="deleteMr(${m.id})"><i class="ti ti-x"></i></button></div><div class="mr-meta"><span><i class="ti ti-clock" style="font-size:12px;"></i> ${ds}</span><span>${m.product}</span></div></div>`;
+  }).join('');
+}
+
+// ===== PWA =====
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+initCal();renderTasks();renderMr();
+</script>
+</body>
+</html>
