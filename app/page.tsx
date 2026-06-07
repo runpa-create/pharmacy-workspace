@@ -5,6 +5,7 @@ import ReferencePane from "@/components/panes/ReferencePane";
 import AiPane from "@/components/panes/AiPane";
 import ExportBar from "@/components/panes/ExportBar";
 import YearSelector from "@/components/panes/YearSelector";
+import { ThemeToggle } from "@/components/panes/ThemeToggle";
 import { WorkspaceProvider, useWorkspace } from "@/components/panes/WorkspaceContext";
 
 function WorkspaceInner() {
@@ -37,9 +38,10 @@ export default function Home() {
     <WorkspaceProvider>
       <div className="flex flex-col h-screen bg-zinc-100 dark:bg-zinc-900">
         <header className="flex items-center gap-3 px-4 h-11 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
-          <span className="text-xs font-medium text-zinc-500">薬学実習ワークスペース</span>
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">薬学実習ワークスペース</span>
           <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700" />
           <YearSelector />
+          <ThemeToggle />
         </header>
         <WorkspaceInner />
       </div>
