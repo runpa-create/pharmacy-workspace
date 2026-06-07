@@ -74,7 +74,7 @@ export default function AiPane() {
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
           system: `あなたは病院薬剤師の実習指導をサポートするAIアシスタントです。薬学実習計画の作成・到達目標の整理・指導案作成を専門的にサポートします。簡潔で実践的なアドバイスをしてください。現在は${currentYear}年度のデータを参照しています。${isReadOnly ? "この年度は閲覧のみです。" : ""}`,
-          messages: [...history, { role: "user", content: userContent }]
+          messages: [...history, { role: "user", content: fileParts.length > 0 ? userContent : text }]
         })
       });
 
@@ -195,3 +195,4 @@ export default function AiPane() {
     </div>
   );
 }
+
