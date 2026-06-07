@@ -8,7 +8,7 @@ type BlobFile = { url: string; pathname: string; size: number };
 export default function AiPane() {
   const { yearData, currentYear, isReadOnly, selectedDate, getEventsForDate } = useWorkspace();
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", text: "こんにちは。実習計画の作成をお手伝いします。到達目標の文言整理や課題提案など、お気軽にご相談ください。\n\nリファレンスにアップロードしたPDFを参照して回答させることもできます。" }
+    { role: "ai", text: "こんにちは。実習計画の作成をお手伝いします。到達目標の文言整理や課題提案など、お気軽にご相談ください。\n\nリファレンスにアップロードしたファイルを参照して回答させることもできます。" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -134,15 +134,15 @@ export default function AiPane() {
                 ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
                 : "border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900"}`}>
             <svg className="w-2.5 h-2.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2"/><polyline points="14 2 14 8 20 8" strokeWidth="2"/></svg>
-            {selectedFiles.length > 0 ? `${selectedFiles.length}件のPDFを参照中` : "PDFを参照して質問"}
+            {selectedFiles.length > 0 ? `${selectedFiles.length}件のファイルを参照中` : "ファイルを参照して質問"}
           </button>
         </div>
 
         {showFileSelector && (
           <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col gap-1.5 bg-zinc-50 dark:bg-zinc-900">
-            <p className="text-[10px] text-zinc-400">参照するPDFを選択（複数可）：</p>
+            <p className="text-[10px] text-zinc-400">参照するファイルを選択（複数可）：</p>
             {availableFiles.length === 0 ? (
-              <p className="text-[11px] text-zinc-400">リファレンスペインにPDFをアップロードしてください</p>
+              <p className="text-[11px] text-zinc-400">リファレンスにファイルをアップロードしてください</p>
             ) : (
               availableFiles.map(f => (
                 <label key={f.pathname} className="flex items-center gap-2 cursor-pointer">
@@ -158,7 +158,7 @@ export default function AiPane() {
         <div className="flex gap-1.5 items-end">
           <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-            placeholder={selectedFiles.length > 0 ? `${selectedFiles.length}件のPDFを参照して回答します…` : "メッセージを入力… (Shift+Enterで改行)"}
+            placeholder={selectedFiles.length > 0 ? `${selectedFiles.length}件のファイルを参照して回答します…` : "メッセージを入力… (Shift+Enterで改行)"}
             rows={2}
             className="flex-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-zinc-400 resize-none" />
           <button onClick={() => sendMessage(input)} disabled={loading}

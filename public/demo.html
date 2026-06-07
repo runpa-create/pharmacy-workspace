@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>薬学実習ワークスペース — デモ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F6F2;--surface:#FFFFFF;--border:#E5E3DC;
+  --text:#1A1916;--text2:#6B6963;--text3:#9E9B93;
+  --accent:#2C5F8A;--accent-light:#E6EFF7;
+  --accent2:#3B6D11;--accent2-light:#EAF3DE;
+  --warn:#854F0B;--warn-light:#FAEEDA;
+  --tag-bg:#EEEDFE;--tag-text:#3C3489;
+}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:44px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{font-size:13px;font-weight:700;color:var(--text);letter-spacing:-0.3px}
+.year-badge{background:var(--text);color:#fff;font-size:11px;font-weight:500;padding:2px 10px;border-radius:20px}
+.menu-btn{font-size:12px;color:var(--text2);border:1px solid var(--border);padding:3px 10px;border-radius:6px;background:transparent;cursor:pointer}
+.demo-banner{background:var(--warn-light);border:1px solid #EF9F27;border-radius:8px;padding:6px 14px;font-size:11px;color:var(--warn);font-weight:500}
+.workspace{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:calc(50vh - 22px) calc(50vh - 22px);gap:8px;padding:8px;height:calc(100vh - 44px)}
+.pane{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.pane-header{display:flex;align-items:center;gap:6px;padding:0 12px;height:36px;border-bottom:1px solid var(--border);flex-shrink:0}
+.pane-title{font-size:11px;font-weight:500;color:var(--text2)}
+.pane-body{flex:1;overflow:hidden;padding:10px}
+.cal-period-tabs{display:flex;gap:0;margin-bottom:8px}
+.cal-period-tab{font-size:10px;padding:3px 10px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--text3)}
+.cal-period-tab:first-child{border-radius:6px 0 0 6px}
+.cal-period-tab:last-child{border-radius:0 6px 6px 0}
+.cal-period-tab.active{background:var(--text);color:#fff;border-color:var(--text)}
+.cal-months{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cal-month h4{font-size:10px;font-weight:500;color:var(--text2);text-align:center;margin-bottom:4px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.cal-dow{font-size:8px;color:var(--text3);text-align:center;padding:1px 0}
+.cal-day{font-size:9px;text-align:center;padding:2px 1px;border-radius:3px;cursor:pointer;color:var(--text2)}
+.cal-day:hover{background:var(--bg)}
+.cal-day.today{background:var(--accent);color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;margin:auto}
+.cal-day.has-event{position:relative}
+.cal-day.has-event::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--accent)}
+.cal-day.sun{color:#E24B4A}
+.cal-day.sat{color:var(--accent)}
+.editor-toolbar{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.editor-toolbar select{font-size:10px;border:1px solid var(--border);border-radius:4px;padding:2px 6px;background:transparent;color:var(--text2)}
+.editor-area{flex:1;overflow:hidden}
+.editor-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--text3)}
+.editor-placeholder p{font-size:11px}
+.editor-content{padding:10px;height:100%;overflow-y:auto}
+.editor-content h3{font-size:12px;font-weight:700;margin-bottom:8px}
+.editor-content p{font-size:11px;line-height:1.7;color:var(--text2);margin-bottom:6px}
+.editor-content ul{padding-left:16px;font-size:11px;color:var(--text2);line-height:1.8}
+.ref-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.ref-tab{flex:1;font-size:11px;padding:8px;text-align:center;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;background:transparent;border-top:none;border-left:none;border-right:none}
+.ref-tab.active{color:var(--text);border-bottom-color:var(--text)}
+.ref-body{flex:1;overflow-y:auto;padding:8px}
+.ref-file{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:6px;cursor:pointer}
+.ref-file:hover{background:var(--bg)}
+.file-icon{font-size:9px;font-weight:700;padding:2px 4px;border-radius:3px;flex-shrink:0}
+.file-icon.pdf{background:#FCEBEB;color:#A32D2D}
+.file-icon.word{background:#E6EFF7;color:#185FA5}
+.file-icon.excel{background:#EAF3DE;color:#3B6D11}
+.file-name{font-size:11px;color:var(--text);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.file-size{font-size:10px;color:var(--text3);flex-shrink:0}
+.upload-area{border:1.5px dashed var(--border);border-radius:8px;padding:16px;text-align:center;margin-top:8px;color:var(--text3)}
+.upload-area p{font-size:10px;margin-top:4px}
+.bookmark-item{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:6px;cursor:pointer}
+.bookmark-item:hover{background:var(--bg)}
+.bookmark-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.bookmark-label{font-size:11px;color:var(--accent)}
+.ai-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ai-msg{max-width:88%;padding:8px 10px;border-radius:8px;font-size:11px;line-height:1.6}
+.ai-msg.ai{background:var(--accent-light);color:#185FA5;align-self:flex-start}
+.ai-msg.user{background:var(--bg);color:var(--text2);align-self:flex-end;border:1px solid var(--border)}
+.ai-msg.demo-notice{background:var(--warn-light);color:var(--warn);align-self:flex-start;border:1px solid #EF9F27}
+.ai-footer{border-top:1px solid var(--border);padding:8px;flex-shrink:0}
+.ai-btns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.ai-btn{font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer}
+.ai-input-row{display:flex;gap:6px}
+.ai-input{flex:1;font-size:11px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;background:var(--bg);color:var(--text);font-family:inherit;resize:none}
+.ai-send{width:32px;height:32px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.event-chip{display:inline-flex;align-items:center;font-size:9px;padding:2px 6px;border-radius:3px;margin:2px}
+.event-chip.rotation{background:var(--accent-light);color:var(--accent)}
+.event-chip.lecture{background:var(--accent2-light);color:var(--accent2)}
+svg.icon{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <span class="logo">薬学実習ワークスペース</span>
+    <span class="year-badge">2026年度</span>
+    <button class="menu-btn">… メニュー</button>
+  </div>
+  <div class="demo-banner">⚠️ これはデモ版です。実際のデータは保存されません</div>
+</div>
+<div class="workspace">
+  <div class="pane">
+    <div class="pane-header">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="pane-title">実習スケジュール</span>
+      <span style="margin-left:auto;font-size:10px;color:var(--text3)">2026年5月〜7月</span>
+    </div>
+    <div class="pane-body" style="padding:8px">
+      <div class="cal-period-tabs">
+        <button class="cal-period-tab">第Ⅰ期</button>
+        <button class="cal-period-tab active">第Ⅱ期</button>
+        <button class="cal-period-tab">第Ⅲ期</button>
+        <button class="cal-period-tab">第Ⅳ期</button>
+      </div>
+      <div class="cal-months" id="calMonths"></div>
+    </div>
+  </div>
+  <div class="pane" style="display:flex;flex-direction:column">
+    <div class="pane-header">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span class="pane-title">コンテンツエディタ</span>
+    </div>
+    <div class="editor-toolbar">
+      <select onchange="loadTemplate(this.value)">
+        <option value="">テンプレートを選択…</option>
+        <option value="weekly">週間実習計画</option>
+        <option value="sbo">SBO目標シート</option>
+        <option value="eval">学生評価表</option>
+      </select>
+    </div>
+    <div class="editor-area" style="flex:1;overflow:hidden">
+      <div class="editor-placeholder" id="editorPlaceholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--text3)">
+        <p>←カレンダーの日付を選択してください</p>
+      </div>
+      <div class="editor-content" id="editorContent" style="display:none;padding:10px;height:100%;overflow-y:auto"></div>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-header">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span class="pane-title">リファレンス</span>
+    </div>
+    <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="ref-tabs">
+        <button class="ref-tab active" onclick="switchRefTab('bookmarks',this)">ブックマーク</button>
+        <button class="ref-tab" onclick="switchRefTab('files',this)">ファイル</button>
+      </div>
+      <div class="ref-body">
+        <div id="bookmarksTab">
+          <div class="bookmark-item"><div class="bookmark-dot"></div><span class="bookmark-label">コアカリキュラム（薬学教育）</span></div>
+          <div class="bookmark-item"><div class="bookmark-dot"></div><span class="bookmark-label">実務実習モデル・コアカリキュラム</span></div>
+          <div class="bookmark-item"><div class="bookmark-dot"></div><span class="bookmark-label">薬剤師国家試験出題基準</span></div>
+        </div>
+        <div id="filesTab" style="display:none">
+          <div class="ref-file"><span class="file-icon pdf">PDF</span><span class="file-name">コアカリキュラム.pdf</span><span class="file-size">292KB</span></div>
+          <div class="ref-file"><span class="file-icon word">Word</span><span class="file-name">①調剤内規改訂.docx</span><span class="file-size">42KB</span></div>
+          <div class="ref-file"><span class="file-icon excel">Excel</span><span class="file-name">実習記録シート.xlsx</span><span class="file-size">18KB</span></div>
+          <div class="upload-area"><p>ファイルをアップロード</p><p style="font-size:9px;margin-top:2px">PDF・Word・Excel 対応</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-header">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="pane-title">AIアシスタント</span>
+      <span style="margin-left:auto;font-size:9px;background:var(--warn-light);color:var(--warn);padding:2px 6px;border-radius:4px">デモ版</span>
+    </div>
+    <div class="ai-body" id="aiBody">
+      <div class="ai-msg ai">こんにちは。実習計画の作成をお手伝いします。到達目標の文言整理や課題提案など、お気軽にご相談ください。</div>
+      <div class="ai-msg demo-notice">⚠️ デモ版のため、AIは使用できません。実際の環境ではClaude AIが質問に回答します。</div>
+    </div>
+    <div class="ai-footer">
+      <div class="ai-btns">
+        <button class="ai-btn" onclick="demoClick()">選択日のイベントを送る</button>
+        <button class="ai-btn" onclick="demoClick()">年度サマリーを送る</button>
+        <button class="ai-btn" onclick="demoClick()">📄 ファイルを参照して質問</button>
+      </div>
+      <div class="ai-input-row">
+        <textarea class="ai-input" rows="2" placeholder="メッセージを入力… (Shift+Enterで改行)" id="aiInput" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDemo()}"></textarea>
+        <button class="ai-send" onclick="sendDemo()">
+          <svg style="width:14px;height:14px;stroke:var(--text2);fill:none;stroke-width:2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const MONTHS=[{y:2026,m:5,label:'2026年5月'},{y:2026,m:6,label:'2026年6月'},{y:2026,m:7,label:'2026年7月'}];
+const EVENTS={'2026-6-7':['rotation'],'2026-6-14':['lecture'],'2026-6-21':['rotation','lecture'],'2026-5-15':['lecture'],'2026-5-22':['rotation'],'2026-7-5':['lecture'],'2026-7-12':['rotation']};
+const DOW=['日','月','火','水','木','金','土'];
+function renderCalendar(){
+  const c=document.getElementById('calMonths');c.innerHTML='';
+  const today=new Date();
+  MONTHS.forEach(({y,m,label})=>{
+    const div=document.createElement('div');div.className='cal-month';
+    div.innerHTML=`<h4>${label}</h4>`;
+    const grid=document.createElement('div');grid.className='cal-grid';
+    DOW.forEach((d,i)=>{const cell=document.createElement('div');cell.className='cal-dow';cell.style.color=i===0?'#E24B4A':i===6?'var(--accent)':'var(--text3)';cell.textContent=d;grid.appendChild(cell);});
+    const first=new Date(y,m-1,1).getDay();
+    const days=new Date(y,m,0).getDate();
+    for(let i=0;i<first;i++){const cell=document.createElement('div');cell.className='cal-day';cell.style.visibility='hidden';cell.textContent='0';grid.appendChild(cell);}
+    for(let d=1;d<=days;d++){
+      const cell=document.createElement('div');
+      const key=`${y}-${m}-${d}`;
+      const dow=new Date(y,m-1,d).getDay();
+      let cls='cal-day';
+      if(dow===0)cls+=' sun';if(dow===6)cls+=' sat';
+      if(y===today.getFullYear()&&m===today.getMonth()+1&&d===today.getDate())cls+=' today';
+      if(EVENTS[key])cls+=' has-event';
+      cell.className=cls;cell.textContent=d;
+      cell.onclick=()=>selectDay(y,m,d);
+      grid.appendChild(cell);
+    }
+    div.appendChild(grid);c.appendChild(div);
+  });
+}
+function selectDay(y,m,d){
+  document.getElementById('editorPlaceholder').style.display='none';
+  const content=document.getElementById('editorContent');
+  content.style.display='block';
+  const key=`${y}-${m}-${d}`;
+  const evs=EVENTS[key]||[];
+  const kindLabel={rotation:'ローテーション',lecture:'講義'};
+  content.innerHTML=`<h3 style="font-size:12px;font-weight:700;margin-bottom:8px">${y}年${m}月${d}日</h3>${evs.length>0?evs.map(e=>`<span class="event-chip ${e}">${kindLabel[e]||e}</span>`).join('')+'<p style="margin-top:10px;font-size:11px;color:var(--text2)">この日の実習内容を記入できます。</p>':`<p style="color:var(--text3);font-size:11px">この日にはイベントがありません。</p>`}`;
+}
+const TEMPLATES={
+  weekly:`<h3 style="font-size:12px;font-weight:700;margin-bottom:8px">週間実習計画</h3><p><strong>実習期間：</strong>2026年6月7日〜6月13日</p><ul style="padding-left:16px;font-size:11px;color:var(--text2);line-height:1.8"><li>月曜：調剤室オリエンテーション</li><li>火曜：処方箋監査実習</li><li>水曜：散剤・水剤調剤</li><li>木曜：注射薬調剤見学</li><li>金曜：服薬指導見学・まとめ</li></ul>`,
+  sbo:`<h3 style="font-size:12px;font-weight:700;margin-bottom:8px">SBO目標シート</h3><ul style="padding-left:16px;font-size:11px;color:var(--text2);line-height:1.8"><li>処方箋を正確に監査できる</li><li>散剤・水剤を規定量通りに調剤できる</li><li>疑義照会を適切に行える</li><li>調剤薬の最終確認ができる</li></ul>`,
+  eval:`<h3 style="font-size:12px;font-weight:700;margin-bottom:8px">学生評価表</h3><ul style="padding-left:16px;font-size:11px;color:var(--text2);line-height:1.8"><li>知識・技能：　　　/ 5点</li><li>態度・積極性：　　/ 5点</li><li>コミュニケーション：/ 5点</li><li>安全意識：　　　　/ 5点</li></ul>`,
+};
+function loadTemplate(v){if(!v)return;document.getElementById('editorPlaceholder').style.display='none';const c=document.getElementById('editorContent');c.style.display='block';c.innerHTML=TEMPLATES[v]||'';}
+function switchRefTab(tab,btn){document.querySelectorAll('.ref-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');document.getElementById('bookmarksTab').style.display=tab==='bookmarks'?'block':'none';document.getElementById('filesTab').style.display=tab==='files'?'block':'none';}
+function demoClick(){addMsg('この機能はデモ版では使用できません。','demo-notice');}
+function sendDemo(){const inp=document.getElementById('aiInput');const t=inp.value.trim();if(!t)return;addMsg(t,'user');inp.value='';setTimeout(()=>addMsg('⚠️ デモ版のため、AIは使用できません。実際の環境ではClaude AIが回答します。','demo-notice'),600);}
+function addMsg(text,type){const b=document.getElementById('aiBody');const d=document.createElement('div');d.className=`ai-msg ${type}`;d.textContent=text;b.appendChild(d);b.scrollTop=b.scrollHeight;}
+renderCalendar();
+</script>
+</body>
+</html>
