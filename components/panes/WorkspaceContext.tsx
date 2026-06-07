@@ -1,5 +1,5 @@
 ﻿"use client";
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 
 export type EventKind = "rotation" | "lecture" | "other";
 export type Period = { id: string; label: string; start: string; end: string };
@@ -39,36 +39,22 @@ const DEFAULT_TEMPLATES: RotationTemplate[] = [
   { id: "t4", title: "薬剤管理指導", kind: "rotation", durationWeeks: 1 },
 ];
 
+const DEFAULT_BOOKMARKS: Bookmark[] = [
+  { id: "b1", label: "薬学教育モデル・コアカリキュラム（令和4年改訂）", url: "https://www.mext.go.jp/b_menu/shingi/chousa/koutou/058/gaiyou/1340373.htm" },
+  { id: "b2", label: "実務実習指導薬剤師講習会（日薬）", url: "https://www.nichiyaku.or.jp/" },
+  { id: "b3", label: "薬学教育協議会 実務実習情報", url: "https://www.gakkyou.jp/" },
+  { id: "b4", label: "厚労省 薬剤師関連情報", url: "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iyakuhin/yakkyoku_yakuzaishi/" },
+  { id: "b5", label: "JPALS（薬剤師生涯学習支援）", url: "https://jpals.jp/" },
+];
+
 function makeDefaultYear(year: number): YearData {
   return {
     academicYear: year, memo: "",
     periods: DEFAULT_PERIODS.map(p => ({ ...p })),
     rotationTemplates: DEFAULT_TEMPLATES.map(t => ({ ...t })),
     events: [], dayNotes: {},
-    bookmarks: [
-      { id: "b1", label: "薬学教育モデル・コアカリキュラム（令和4年改訂）", url: "https://www.mext.go.jp/b_menu/shingi/chousa/koutou/058/gaiyou/1340373.htm" },
-      { id: "b2", label: "実務実習指導薬剤師講習会（日薬）", url: "https://www.nichiyaku.or.jp/" },
-      { id: "b3", label: "薬学教育協議会 実務実習情報", url: "https://www.gakkyou.jp/" },
-      { id: "b4", label: "厚労省 薬剤師関連情報", url: "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iyakuhin/yakkyoku_yakuzaishi/" },
-      { id: "b5", label: "JPALS（薬剤師生涯学習支援）", url: "https://jpals.jp/" },
-    ],
+    bookmarks: DEFAULT_BOOKMARKS.map(b => ({ ...b })),
   };
-}
-
-const STORAGE_KEY = "pharm_ws_years";
-const CURRENT_YEAR_KEY = "pharm_ws_current_year";
-
-function loadAllYears(): Record<number, YearData> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  const def = makeDefaultYear(2026);
-  return { 2026: def };
-}
-
-function saveAllYears(years: Record<number, YearData>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(years));
 }
 
 type WorkspaceCtx = {
@@ -76,6 +62,7 @@ type WorkspaceCtx = {
   allYears: number[];
   yearData: YearData;
   isReadOnly: boolean;
+  loading: boolean;
   setCurrentYear: (y: number) => void;
   createYear: (y: number, copyFromYear?: number) => void;
   updateYearData: (patch: Partial<YearData>) => void;
@@ -93,49 +80,83 @@ type WorkspaceCtx = {
 const Ctx = createContext<WorkspaceCtx | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const [allYearsData, setAllYearsData] = useState<Record<number, YearData>>(loadAllYears);
-  const [currentYear, setCurrentYearState] = useState<number>(() => {
-    try { return parseInt(localStorage.getItem(CURRENT_YEAR_KEY) || "2026"); } catch { return 2026; }
-  });
+  const [allYearsData, setAllYearsData] = useState<Record<number, YearData>>({});
+  const [currentYear, setCurrentYearState] = useState<number>(2026);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // DBからデータを読み込む
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/api/years");
+        const data = await res.json();
+        if (Object.keys(data).length > 0) {
+          setAllYearsData(data);
+          const years = Object.keys(data).map(Number).sort((a, b) => b - a);
+          setCurrentYearState(years[0]);
+        } else {
+          const def = makeDefaultYear(2026);
+          setAllYearsData({ 2026: def });
+          await fetch("/api/years", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ academicYear: 2026, data: def }),
+          });
+        }
+      } catch {
+        const def = makeDefaultYear(2026);
+        setAllYearsData({ 2026: def });
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
 
   const allYears = Object.keys(allYearsData).map(Number).sort((a, b) => b - a);
   const yearData = allYearsData[currentYear] || makeDefaultYear(currentYear);
-  const latestYear = Math.max(...allYears);
+  const latestYear = allYears.length > 0 ? Math.max(...allYears) : currentYear;
   const isReadOnly = currentYear < latestYear;
 
   const setCurrentYear = useCallback((y: number) => {
     setCurrentYearState(y);
     setSelectedDate(null);
-    localStorage.setItem(CURRENT_YEAR_KEY, String(y));
   }, []);
 
-  const createYear = useCallback((y: number, copyFromYear?: number) => {
-    setAllYearsData(prev => {
-      if (prev[y]) return prev;
-      const base = copyFromYear && prev[copyFromYear]
-        ? { ...prev[copyFromYear], academicYear: y, memo: "", events: [], dayNotes: {}, exportedAt: undefined }
-        : makeDefaultYear(y);
-      const next = { ...prev, [y]: base };
-      saveAllYears(next);
-      return next;
-    });
+  const saveToDb = useCallback(async (year: number, data: YearData) => {
+    try {
+      await fetch("/api/years", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ academicYear: year, data }),
+      });
+    } catch (e) {
+      console.error("DB save error:", e);
+    }
+  }, []);
+
+  const createYear = useCallback(async (y: number, copyFromYear?: number) => {
+    if (allYearsData[y]) return;
+    const base = copyFromYear && allYearsData[copyFromYear]
+      ? { ...allYearsData[copyFromYear], academicYear: y, memo: "", events: [], dayNotes: {}, exportedAt: undefined }
+      : makeDefaultYear(y);
+    setAllYearsData(prev => ({ ...prev, [y]: base }));
     setCurrentYearState(y);
-    localStorage.setItem(CURRENT_YEAR_KEY, String(y));
-  }, []);
+    await saveToDb(y, base);
+  }, [allYearsData, saveToDb]);
 
-  const updateYearData = useCallback((patch: Partial<YearData>) => {
+  const updateYearData = useCallback(async (patch: Partial<YearData>) => {
     if (currentYear < Math.max(...Object.keys(allYearsData).map(Number))) return;
     setAllYearsData(prev => {
-      const next = { ...prev, [currentYear]: { ...prev[currentYear], ...patch } };
-      saveAllYears(next);
-      return next;
+      const updated = { ...prev[currentYear], ...patch };
+      saveToDb(currentYear, updated);
+      return { ...prev, [currentYear]: updated };
     });
-  }, [currentYear, allYearsData]);
+  }, [currentYear, allYearsData, saveToDb]);
 
   const getEventsForDate = useCallback((date: string) => {
-    return yearData.events.filter(ev => ev.startDate <= date && ev.endDate >= date);
+    return (yearData.events || []).filter(ev => ev.startDate <= date && ev.endDate >= date);
   }, [yearData.events]);
 
   const exportCurrentYear = useCallback(() => {
@@ -151,30 +172,28 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     a.download = `jisshu_plan_all.json`; a.click();
   }, [allYearsData]);
 
-  const importYear = useCallback((json: string) => {
+  const importYear = useCallback(async (json: string) => {
     try {
       const parsed = JSON.parse(json);
       if (parsed.academicYear) {
-        setAllYearsData(prev => {
-          const next = { ...prev, [parsed.academicYear]: parsed };
-          saveAllYears(next);
-          return next;
-        });
+        setAllYearsData(prev => ({ ...prev, [parsed.academicYear]: parsed }));
         setCurrentYearState(parsed.academicYear);
-        localStorage.setItem(CURRENT_YEAR_KEY, String(parsed.academicYear));
+        await saveToDb(parsed.academicYear, parsed);
       } else {
         const next = parsed as Record<number, YearData>;
         setAllYearsData(next);
-        saveAllYears(next);
+        for (const [year, data] of Object.entries(next)) {
+          await saveToDb(Number(year), data as YearData);
+        }
       }
     } catch { alert("ファイルの読み込みに失敗しました。"); }
-  }, []);
+  }, [saveToDb]);
 
   const addFile = useCallback((f: UploadedFile) => setUploadedFiles(prev => [...prev, f]), []);
   const removeFile = useCallback((id: string) => setUploadedFiles(prev => prev.filter(f => f.id !== id)), []);
 
   return (
-    <Ctx.Provider value={{ currentYear, allYears, yearData, isReadOnly, setCurrentYear, createYear, updateYearData, selectedDate, setSelectedDate, getEventsForDate, exportCurrentYear, exportAllYears, importYear, uploadedFiles, addFile, removeFile }}>
+    <Ctx.Provider value={{ currentYear, allYears, yearData, isReadOnly, loading, setCurrentYear, createYear, updateYearData, selectedDate, setSelectedDate, getEventsForDate, exportCurrentYear, exportAllYears, importYear, uploadedFiles, addFile, removeFile }}>
       {children}
     </Ctx.Provider>
   );
@@ -185,5 +204,3 @@ export function useWorkspace() {
   if (!ctx) throw new Error("useWorkspace must be used within WorkspaceProvider");
   return ctx;
 }
-
-
