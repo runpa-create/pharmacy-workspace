@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
-    const blob = await put(file.name, file, { access: "public" });
+    const blob = await put(file.name, file, { access: "private" });
     return NextResponse.json(blob);
   } catch (e) {
     console.error(e);
@@ -34,3 +34,5 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+
