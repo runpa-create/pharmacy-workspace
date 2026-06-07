@@ -3,44 +3,38 @@ import { useState, useRef, useEffect } from "react";
 import { useWorkspace } from "./WorkspaceContext";
 
 type Message = { role: "user" | "ai"; text: string };
+type BlobFile = { url: string; pathname: string; size: number };
 
 export default function AiPane() {
-  const { yearData, currentYear, isReadOnly, selectedDate, getEventsForDate, uploadedFiles } = useWorkspace();
+  const { yearData, currentYear, isReadOnly, selectedDate, getEventsForDate } = useWorkspace();
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", text: "こんにちは。実習計画の作成をお手伝いします。到達目標の文言整理や課題提案など、お気軽にご相談ください。\n\nリファレンスにアップロードしたファイルを参照して回答させることもできます。" }
+    { role: "ai", text: "こんにちは。実習計画の作成をお手伝いします。到達目標の文言整理や課題提案など、お気軽にご相談ください。\n\nリファレンスにアップロードしたPDFを参照して回答させることもできます。" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [availableFiles, setAvailableFiles] = useState<BlobFile[]>([]);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  const toggleFile = (id: string) => {
-    setSelectedFiles(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
+  const fetchFiles = async () => {
+    try {
+      const res = await fetch("/api/files");
+      const data = await res.json();
+      setAvailableFiles(Array.isArray(data) ? data.filter((f: BlobFile) => f.pathname.endsWith(".pdf")) : []);
+    } catch (e) { console.error(e); }
   };
 
-  const buildFileContent = async (): Promise<{ type: string; source: { type: string; media_type: string; data: string } }[]> => {
-    const parts = [];
-    for (const fileId of selectedFiles) {
-      const file = uploadedFiles.find(f => f.id === fileId);
-      if (!file) continue;
-      if (file.fileType === "pdf") {
-        try {
-          const res = await fetch(file.url);
-          const blob = await res.blob();
-          const base64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve((reader.result as string).split(",")[1]);
-            reader.readAsDataURL(blob);
-          });
-          parts.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } });
-        } catch (e) { console.error("file read error", e); }
-      }
-    }
-    return parts;
+  const handleShowFileSelector = () => {
+    if (!showFileSelector) fetchFiles();
+    setShowFileSelector(v => !v);
+  };
+
+  const toggleFile = (pathname: string) => {
+    setSelectedFiles(prev => prev.includes(pathname) ? prev.filter(f => f !== pathname) : [...prev, pathname]);
   };
 
   const sendMessage = async (text: string) => {
@@ -51,30 +45,14 @@ export default function AiPane() {
     setLoading(true);
 
     try {
-      const fileParts = await buildFileContent();
       const history = messages.map(m => ({ role: m.role === "ai" ? "assistant" : "user", content: m.text }));
-
-      const userContent: unknown[] = [];
-      if (fileParts.length > 0) {
-        userContent.push(...fileParts);
-        userContent.push({ type: "text", text: `以下のファイル(${fileParts.length}件)の内容を参照して回答してください。\n\n${text}` });
-      } else {
-        userContent.push({ type: "text", text });
-      }
-
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY!,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
           system: `あなたは病院薬剤師の実習指導をサポートするAIアシスタントです。薬学実習計画の作成・到達目標の整理・指導案作成を専門的にサポートします。簡潔で実践的なアドバイスをしてください。現在は${currentYear}年度のデータを参照しています。${isReadOnly ? "この年度は閲覧のみです。" : ""}`,
-          messages: [...history, { role: "user", content: fileParts.length > 0 ? userContent : text }]
+          messages: [...history, { role: "user", content: text }],
+          fileNames: selectedFiles
         })
       });
 
@@ -109,8 +87,6 @@ export default function AiPane() {
     });
   };
 
-  const pdfFiles = uploadedFiles.filter(f => f.fileType === "pdf");
-
   return (
     <div className="flex flex-col bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
       <div className="flex items-center gap-2 px-3 h-10 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
@@ -128,8 +104,7 @@ export default function AiPane() {
                 : "bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-200"}`}>
               {m.text}
             </div>
-            <button
-              onClick={() => copyMessage(m.text, i)}
+            <button onClick={() => copyMessage(m.text, i)}
               className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded bg-white/80 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600">
               {copiedId === i ? (
                 <svg className="w-2.5 h-2.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" strokeWidth="2"/></svg>
@@ -153,27 +128,27 @@ export default function AiPane() {
             className="text-[10px] px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900">
             年度サマリーを送る
           </button>
-          <button onClick={() => setShowFileSelector(v => !v)}
+          <button onClick={handleShowFileSelector}
             className={`text-[10px] px-2.5 py-1 rounded border transition-colors
               ${selectedFiles.length > 0
                 ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
                 : "border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900"}`}>
             <svg className="w-2.5 h-2.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2"/><polyline points="14 2 14 8 20 8" strokeWidth="2"/></svg>
-            {selectedFiles.length > 0 ? `${selectedFiles.length}件のファイルを参照中` : "ファイルを参照して質問"}
+            {selectedFiles.length > 0 ? `${selectedFiles.length}件のPDFを参照中` : "PDFを参照して質問"}
           </button>
         </div>
 
         {showFileSelector && (
           <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 flex flex-col gap-1.5 bg-zinc-50 dark:bg-zinc-900">
             <p className="text-[10px] text-zinc-400">参照するPDFを選択（複数可）：</p>
-            {pdfFiles.length === 0 ? (
+            {availableFiles.length === 0 ? (
               <p className="text-[11px] text-zinc-400">リファレンスペインにPDFをアップロードしてください</p>
             ) : (
-              pdfFiles.map(f => (
-                <label key={f.id} className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={selectedFiles.includes(f.id)} onChange={() => toggleFile(f.id)}
-                    className="rounded border-zinc-300" />
-                  <span className="text-[11px] text-zinc-600 dark:text-zinc-400 truncate">{f.name}</span>
+              availableFiles.map(f => (
+                <label key={f.pathname} className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={selectedFiles.includes(f.pathname)} onChange={() => toggleFile(f.pathname)} className="rounded border-zinc-300" />
+                  <span className="text-[11px] text-zinc-600 dark:text-zinc-400 truncate">{f.pathname}</span>
+                  <span className="text-[10px] text-zinc-300 flex-shrink-0">{(f.size/1024).toFixed(0)}KB</span>
                 </label>
               ))
             )}
@@ -183,7 +158,7 @@ export default function AiPane() {
         <div className="flex gap-1.5 items-end">
           <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-            placeholder={selectedFiles.length > 0 ? `${selectedFiles.length}件のファイルを参照して回答します…` : "メッセージを入力… (Shift+Enterで改行)"}
+            placeholder={selectedFiles.length > 0 ? `${selectedFiles.length}件のPDFを参照して回答します…` : "メッセージを入力… (Shift+Enterで改行)"}
             rows={2}
             className="flex-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-zinc-400 resize-none" />
           <button onClick={() => sendMessage(input)} disabled={loading}
@@ -195,6 +170,3 @@ export default function AiPane() {
     </div>
   );
 }
-
-
-
