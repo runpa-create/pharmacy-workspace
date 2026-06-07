@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY!,
+      "x-api-key": process.env.ANTHROPIC_API_KEY!,
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
@@ -35,3 +35,4 @@ export async function POST(req: Request) {
   const data = await res.json();
   return NextResponse.json(data);
 }
+
