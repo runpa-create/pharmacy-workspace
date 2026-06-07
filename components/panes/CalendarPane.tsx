@@ -51,27 +51,13 @@ export default function CalendarPane() {
   const handlePdfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
     setImporting(true); setImportMsg("PDFを読み取り中…");
-    const base64 = await new Promise<string>((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res((r.result as string).split(",")[1]);
-      r.onerror = () => rej();
-      r.readAsDataURL(f);
-    });
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
-          messages: [{ role: "user", content: [
-            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-            { type: "text", text: `このPDFは薬学実務実習の年間日程表です。第Ⅰ期・第Ⅱ期・第Ⅲ期・第Ⅳ期それぞれの開始日と終了日を読み取り、必ず以下のJSON形式のみで返してください。他の文字は一切含めないでください。
-[{"id":"p1","label":"第Ⅰ期","start":"YYYY-MM-DD","end":"YYYY-MM-DD"},{"id":"p2","label":"第Ⅱ期","start":"YYYY-MM-DD","end":"YYYY-MM-DD"},{"id":"p3","label":"第Ⅲ期","start":"YYYY-MM-DD","end":"YYYY-MM-DD"},{"id":"p4","label":"第Ⅳ期","start":"YYYY-MM-DD","end":"YYYY-MM-DD"}]` }
-          ]}]
-        })
-      });
+      const fd = new FormData();
+      fd.append("file", f);
+      const resp = await fetch("/api/parse-schedule", { method: "POST", body: fd });
       const data = await resp.json();
-      const text = data.content?.filter((c: {type:string}) => c.type === "text").map((c: {text:string}) => c.text).join("") || "";
+      if (data.error) throw new Error(data.error);
+      const text: string = data.text ?? "";
       const parsed: Period[] = JSON.parse(text.replace(/```json|```/g, "").trim());
       setEditPeriods(parsed);
       setImportMsg("✓ 日程を読み取りました。内容を確認して「保存」してください。");

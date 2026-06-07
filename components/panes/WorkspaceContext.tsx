@@ -148,11 +148,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const updateYearData = useCallback(async (patch: Partial<YearData>) => {
     if (currentYear < Math.max(...Object.keys(allYearsData).map(Number))) return;
-    setAllYearsData(prev => {
-      const updated = { ...prev[currentYear], ...patch };
-      saveToDb(currentYear, updated);
-      return { ...prev, [currentYear]: updated };
-    });
+    const updated = { ...allYearsData[currentYear], ...patch };
+    setAllYearsData(prev => ({ ...prev, [currentYear]: updated }));
+    await saveToDb(currentYear, updated);
   }, [currentYear, allYearsData, saveToDb]);
 
   const getEventsForDate = useCallback((date: string) => {
@@ -172,19 +170,35 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     a.download = `jisshu_plan_all.json`; a.click();
   }, [allYearsData]);
 
+  const isValidYearData = (obj: unknown): obj is YearData => {
+    if (typeof obj !== "object" || obj === null) return false;
+    const o = obj as Record<string, unknown>;
+    return (
+      typeof o.academicYear === "number" &&
+      o.academicYear > 2000 && o.academicYear < 2100 &&
+      Array.isArray(o.events) &&
+      Array.isArray(o.periods)
+    );
+  };
+
   const importYear = useCallback(async (json: string) => {
     try {
       const parsed = JSON.parse(json);
-      if (parsed.academicYear) {
+      if (isValidYearData(parsed)) {
         setAllYearsData(prev => ({ ...prev, [parsed.academicYear]: parsed }));
         setCurrentYearState(parsed.academicYear);
         await saveToDb(parsed.academicYear, parsed);
-      } else {
+      } else if (typeof parsed === "object" && parsed !== null) {
+        const entries = Object.entries(parsed as Record<string, unknown>);
+        const valid = entries.every(([k, v]) => !isNaN(Number(k)) && isValidYearData(v));
+        if (!valid) { alert("ファイルの形式が正しくありません。"); return; }
         const next = parsed as Record<number, YearData>;
         setAllYearsData(next);
         for (const [year, data] of Object.entries(next)) {
           await saveToDb(Number(year), data as YearData);
         }
+      } else {
+        alert("ファイルの形式が正しくありません。");
       }
     } catch { alert("ファイルの読み込みに失敗しました。"); }
   }, [saveToDb]);

@@ -24,7 +24,7 @@ export default function AiPane() {
     try {
       const res = await fetch("/api/files");
       const data = await res.json();
-      setAvailableFiles(Array.isArray(data) ? data.filter((f: BlobFile) => true) : []);
+      setAvailableFiles(Array.isArray(data) ? data : []);
     } catch (e) { console.error(e); }
   };
 
