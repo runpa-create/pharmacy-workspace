@@ -159,7 +159,7 @@ export default function ReferencePane() {
               <span className="text-[11px]">{uploading ? "アップロード中…" : "ファイルをアップロード"}</span>
               <span className="text-[10px] text-zinc-300 dark:text-zinc-600">PDF・Word・Excel 対応 / 保存されます</span>
             </button>
-            <input ref={fileRef} type="file" accept={FILE_ACCEPT} multiple className="hidden" onChange={handleFile} />
+            <input ref={fileRef} id="file-upload" type="file" accept={FILE_ACCEPT} multiple className="hidden" onChange={handleFile} />
             {files.map((f) => {
               const name = f.pathname.split("/").pop() || f.pathname;
               const type = getFileType(name);
