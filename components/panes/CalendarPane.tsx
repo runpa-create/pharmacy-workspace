@@ -143,12 +143,12 @@ export default function CalendarPane() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap md:flex-wrap">
           {months.map(({ year, month }) => {
             const firstDay = new Date(year, month, 1).getDay();
             const lastDate = new Date(year, month + 1, 0).getDate();
             return (
-              <div key={`${year}-${month}`} className="flex-1 min-w-[160px]">
+              <div key={`${year}-${month}`} className="w-full md:flex-1 md:min-w-[160px]">
                 <div className="text-[11px] font-medium text-zinc-500 text-center mb-1">{year}年{MONTH_NAMES[month]}</div>
                 <div className="grid grid-cols-7 mb-0.5">
                   {DOWS.map(d => <div key={d} className={`text-center text-[9px] py-0.5 ${d==="日"?"text-red-400":d==="土"?"text-blue-400":"text-zinc-400"}`}>{d}</div>)}
